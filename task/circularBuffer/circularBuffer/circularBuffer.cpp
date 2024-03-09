@@ -74,6 +74,7 @@ value_type& CircularBuffer::at(int i)
 	return m_buffer[i + m_first < m_capacity ? i + m_first : i + m_first - m_capacity];
 }
 
+// А почему у тебя отличается реализация от простого at? Методы же одинаковые, просто доступ к данным разный.
 const value_type& CircularBuffer::at(int i) const
 {
 	if (i >= m_capacity) {
@@ -144,6 +145,7 @@ bool CircularBuffer::is_linearized() const
 	return m_first == 0;
 }
 
+// Хорошая попытка, но не правильно :). Тут я бы хотел имено все данные сдвинуть циклически.
 void CircularBuffer::rotate(int new_begin)
 {
 	if (new_begin < size()) {
@@ -157,6 +159,7 @@ void CircularBuffer::rotate(int new_begin)
 
 void CircularBuffer::set_capacity(int new_capacity)
 {
+	// Реаллокация нужна будет только если new_capacity > m_capacity.
 	auto newBuffer = new value_type[new_capacity];
 	for (int i = 0; i < (m_size < new_capacity ? m_size : new_capacity); i++)
 	{
@@ -174,6 +177,8 @@ void CircularBuffer::set_capacity(int new_capacity)
 
 void CircularBuffer::resize(int new_size, const value_type& item)
 {
+	// set_capacity нужно делать только если new_size больше m_capacity
+	// Если размер надо уменьшить, то просто делаешь pop_back нужное число раз.
 	set_capacity(new_size);
 	while(!full())
 	{
@@ -183,6 +188,7 @@ void CircularBuffer::resize(int new_size, const value_type& item)
 
 void CircularBuffer::swap(CircularBuffer& cb)
 {
+	// Зачем лианеризацию делаешь? Тут достачно поменять местами все поля.
 	linearize();
 	cb.linearize();
 	if(cb.capacity()>capacity())
