@@ -268,6 +268,7 @@ void CircularBuffer::pop_front()
 
 void CircularBuffer::erase(int first, int last)
 {
+	// тут тоже linearize не нужен.
 	linearize();
 	memmove(m_buffer+first, m_buffer + last, m_size - last);
 	m_size -= last - first;
