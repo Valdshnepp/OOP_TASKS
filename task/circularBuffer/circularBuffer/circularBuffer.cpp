@@ -24,10 +24,6 @@ CircularBuffer::CircularBuffer(int capacity, const value_type& elem):CircularBuf
 	while (!full()) {
 		push_back(elem);
 	}
-	/*for (int i = 0; i < capacity; i++) {
-            m_buffer[i]= elem;
-            m_size++;
-        }*/
 }
 
 CircularBuffer::CircularBuffer(const CircularBuffer& cb)
@@ -58,12 +54,12 @@ CircularBuffer& CircularBuffer::operator=(const CircularBuffer& cb)
 
 value_type& CircularBuffer::operator[](int i)
 {
-	return m_buffer[i + m_first<m_capacity?i+m_first:i+m_first-m_capacity];
+	return m_buffer[(m_first + i) % m_capacity];
 }
 
 const value_type& CircularBuffer::operator[](int i) const
 {
-	return m_buffer[i + m_first < m_capacity ? i + m_first : i + m_first - m_capacity];
+	return m_buffer[(m_first + i) % m_capacity];
 }
 
 value_type& CircularBuffer::at(int i)
@@ -71,16 +67,17 @@ value_type& CircularBuffer::at(int i)
 	if (i >= m_size) {
 		throw std::out_of_range("out of range");
 	}
-	return m_buffer[i + m_first < m_capacity ? i + m_first : i + m_first - m_capacity];
+	return operator[](i);
 }
 
 // А почему у тебя отличается реализация от простого at? Методы же одинаковые, просто доступ к данным разный.
+// 
 const value_type& CircularBuffer::at(int i) const
 {
-	if (i >= m_capacity) {
+	if (i >= m_size) {
 		throw std::out_of_range("out of range");
 	}
-	return m_buffer[i + m_first];
+	return operator[](i);
 }
 
 value_type& CircularBuffer::front()
@@ -96,12 +93,7 @@ value_type& CircularBuffer::back()
 	if (m_size == 0) {
 		throw std::out_of_range("out of range");
 	}
-	if (m_first + m_size > m_capacity) {
-		return m_buffer[m_first + m_size - 1 - m_capacity];
-	}
-	else {
-		return m_buffer[m_first + m_size - 1];
-	}
+	return operator[](m_size - 1);
 }
 
 const value_type& CircularBuffer::front() const
@@ -110,7 +102,6 @@ const value_type& CircularBuffer::front() const
 		throw std::out_of_range("out of range");
 	}
 	return m_buffer[m_first];
-
 }
 
 const value_type& CircularBuffer::back() const
@@ -118,25 +109,16 @@ const value_type& CircularBuffer::back() const
 	if (m_size == 0) {
 		throw std::out_of_range("out of range");
 	}
-	if (m_first + m_size > m_capacity) {
-		return m_buffer[m_first + m_size - 1 - m_capacity];
-	}
-	else {
-		return m_buffer[m_first + m_size - 1];
-	}
+	return operator[](m_size-1);
 }
 
-value_type* CircularBuffer::linearize()
-{
-	if (m_first == 0) {
-		return m_buffer;
-	}
-	auto tmpBuffer = new value_type[m_first];
-	memcpy(tmpBuffer, m_buffer, m_first);
-	memmove(m_buffer, m_buffer+m_first, m_capacity - m_first);
-	memcpy(m_buffer + m_size-m_first, tmpBuffer, m_first);
+//linearize fix
+value_type* CircularBuffer::linearize(){
+	int true_size = m_size;
+	m_size = m_capacity;
+	rotate(m_first);
 	m_first = 0;
-	delete[] tmpBuffer;
+	m_size = true_size;
 	return m_buffer;
 }
 
@@ -145,65 +127,80 @@ bool CircularBuffer::is_linearized() const
 	return m_first == 0;
 }
 
-// Хорошая попытка, но не правильно :). Тут я бы хотел имено все данные сдвинуть циклически.
-void CircularBuffer::rotate(int new_begin)
-{
-	if (new_begin < size()) {
-		m_first = new_begin;
+//rotate fix
+void CircularBuffer::rotate(int new_begin){
+	if (new_begin<0 || new_begin>m_size){
+		throw std::out_of_range("New begin index out of range");
 	}
-	else
-	{
-		throw std::out_of_range("bad new_begin");
+	for (int j = 0; j < new_begin; j++) {
+		auto frnt = front();
+		for (int i = 0; i < m_size-1; i++) {
+			
+			this->operator[](i) = this->operator[](i + 1);
+		}
+		this->operator[](m_size-1) = frnt;
 	}
 }
 
-void CircularBuffer::set_capacity(int new_capacity)
-{
-	// Реаллокация нужна будет только если new_capacity > m_capacity.
-	auto newBuffer = new value_type[new_capacity];
-	for (int i = 0; i < (m_size < new_capacity ? m_size : new_capacity); i++)
-	{
-		newBuffer[i] = this->operator[](i);
+//fixed set_capacity +
+void CircularBuffer::set_capacity(int new_capacity){
+	if (new_capacity> m_capacity){
+		auto newBuffer = new value_type[new_capacity];
+		for (int i = 0; i < m_size; i++)
+		{
+			newBuffer[i] = this->operator[](i);
+		}
+		delete[] m_buffer;
+		m_buffer = newBuffer;
+		m_capacity = new_capacity;
+		m_first = 0;
 	}
-	delete[] m_buffer;
-	m_buffer = newBuffer;
-	if (new_capacity < m_size)
+	else if (new_capacity<m_capacity)
 	{
-		m_size = new_capacity;
+		clear();
+		m_capacity = new_capacity;
 	}
-	m_first = 0;
-	m_capacity = new_capacity;
 }
 
+//fixed resize +
 void CircularBuffer::resize(int new_size, const value_type& item)
 {
 	// set_capacity нужно делать только если new_size больше m_capacity
 	// Если размер надо уменьшить, то просто делаешь pop_back нужное число раз.
-	set_capacity(new_size);
-	while(!full())
-	{
+	if (new_size<0){
+		throw std::out_of_range("negative size");
+	}
+
+	if (new_size>m_capacity){
+		set_capacity(new_size);
+	}
+
+	while(m_size<new_size){
 		push_back(item);
+	}
+
+	while (m_size>new_size){
+		pop_back();
 	}
 }
 
+//fixed swap
 void CircularBuffer::swap(CircularBuffer& cb)
 {
 	// Зачем лианеризацию делаешь? Тут достачно поменять местами все поля.
-	linearize();
-	cb.linearize();
 	if(cb.capacity()>capacity())
 	{
-
 		set_capacity(cb.capacity());
-		m_size = cb.size();
+		m_capacity = cb.m_capacity;
 	}
 	else
 	{
 		cb.set_capacity(capacity());
-		cb.m_size = m_size;
+		cb.m_capacity = m_capacity;
 	}
+	std::swap(cb.m_first, m_first);
+	std::swap(cb.m_size, m_size);
 	std::swap(m_buffer, cb.m_buffer);
-
 }
 
 void CircularBuffer::push_back(const value_type& item)
@@ -212,12 +209,12 @@ void CircularBuffer::push_back(const value_type& item)
 		return;
 	}
 	if (m_size < m_capacity) {
-		m_buffer[m_first + m_size > m_capacity ? m_capacity - m_first - m_size : m_first + m_size]= item;
+		m_buffer[(m_first + m_size) % m_capacity]= item;
 		m_size++;
 	}
 	else {
 		m_buffer[m_first] = item;
-		m_first = m_first + 1 < m_capacity ? m_first + 1 : 0;
+		m_first = (m_first + 1) % m_capacity;
 	}
 
 }
@@ -245,14 +242,13 @@ void CircularBuffer::insert(int pos, const value_type& item)
 	if (pos > m_size) {
 		throw std::out_of_range("out of range");
 	}
-	m_buffer[m_first + pos < m_capacity ? m_first + pos : m_capacity - m_first - pos] = item;
+	m_buffer[(m_first + pos) % m_capacity] = item;
 }
 
 void CircularBuffer::pop_back()
 {
 	if (!empty()) {
-		m_buffer[m_first + m_size -1 < m_capacity ? m_first + m_size-1 :
-			         m_first+ m_size -1 - m_capacity] = value_type();
+		m_buffer[(m_first + m_size - 1) % m_capacity] = value_type();
 		m_size--;
 	}
 }
@@ -261,17 +257,21 @@ void CircularBuffer::pop_front()
 {
 	if (!empty()) {
 		m_buffer[m_first] = value_type();
-		m_first = m_first + 1 < m_capacity ? m_first + 1 : 0;
+		m_first = (m_first + 1) % m_capacity;
 		m_size--;
 	}
 }
 
+//fixed erase +
 void CircularBuffer::erase(int first, int last)
 {
-	// тут тоже linearize не нужен.
-	linearize();
-	memmove(m_buffer+first, m_buffer + last, m_size - last);
-	m_size -= last - first;
+	if(first>last || first < 0 || last > m_size){
+		throw std::out_of_range("bad range");
+	}
+	for (int i = 0; i< last-first ;i++){
+		operator[](i + first) = operator[](i + last);
+	}
+	m_size -= (last - first);
 }
 
 void CircularBuffer::clear()

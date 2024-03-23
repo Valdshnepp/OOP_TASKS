@@ -92,7 +92,7 @@ public:
 // надо бы сравнить все поля, а не только массив данных. Ты тут как минимум их capacity не сравниваешь.
 inline bool operator==(const CircularBuffer& a, const CircularBuffer& b)
 {
-    if (a.size() == b.size())
+    if (a.size() == b.size() && a.capacity()==b.capacity())
     {
         for (int i = 0; i < a.size(); i++)
         {
@@ -109,5 +109,6 @@ inline bool operator==(const CircularBuffer& a, const CircularBuffer& b)
 inline bool operator!=(const CircularBuffer& a, const CircularBuffer& b)
 {
     // Как-то ортодоксально написано... Давай попроще
-    return !operator==(a, b);
+    return !(a == b);
+    //return !operator==(a, b);
 }

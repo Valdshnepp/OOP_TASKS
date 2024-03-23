@@ -296,9 +296,9 @@ TEST(etc, set_capacity){
 	EXPECT_TRUE(buf[2] == 'c');
 
 	buf.set_capacity(1);
-	EXPECT_TRUE(buf.size() == 1);
+	EXPECT_TRUE(buf.size() == 0);
 	EXPECT_TRUE(buf.capacity() == 1);
-	EXPECT_TRUE(buf[0] == 'a');
+	EXPECT_ANY_THROW(buf.at(0));
 }
 
 TEST(etc, resize) {
@@ -317,8 +317,17 @@ TEST(etc, resize) {
 
 	buf.resize(1);
 	EXPECT_TRUE(buf.size() == 1);
-	EXPECT_TRUE(buf.capacity() == 1);
+	EXPECT_TRUE(buf.capacity() == 3);
 	EXPECT_TRUE(buf[0] == 'a');
+	EXPECT_ANY_THROW(buf.at(1));
+
+	buf.resize(2, 'c');
+	EXPECT_TRUE(buf.size() == 2);
+	EXPECT_TRUE(buf.capacity() == 3);
+	EXPECT_TRUE(buf[0] == 'a');
+	EXPECT_TRUE(buf[1] == 'c');
+	EXPECT_ANY_THROW(buf.at(2));
+	
 }
 
 TEST(etc, linearize) {
@@ -349,6 +358,37 @@ TEST(etc, linearize) {
 	EXPECT_TRUE(buf[2] == 'd');
 }
 
+TEST(etc, linearize2) {
+	CrtCheckMemory check;
+
+	CircularBuffer buf(4);
+
+	EXPECT_TRUE(buf.size() == 0);
+
+	buf.push_back('a');
+	buf.push_back('b');
+	buf.push_back('c');
+	buf.linearize();
+	EXPECT_TRUE(buf[0] == 'a');
+	EXPECT_TRUE(buf[1] == 'b');
+	EXPECT_TRUE(buf[2] == 'c');
+	EXPECT_TRUE(buf.capacity() == 4);
+	EXPECT_TRUE(buf.size() == 3);
+
+	buf.push_back('d');
+	buf.push_back('e');
+	buf.push_back('f');
+	buf.pop_back();
+	EXPECT_TRUE(buf.is_linearized() == false);
+	buf.linearize();
+	EXPECT_TRUE(buf.is_linearized() == true);
+	EXPECT_TRUE(buf.capacity() == 4);
+	EXPECT_TRUE(buf.size() == 3);
+	EXPECT_TRUE(buf[0] == 'c');
+	EXPECT_TRUE(buf[1] == 'd');
+	EXPECT_TRUE(buf[2] == 'e');
+}
+
 TEST(etc, swap) {
 	CrtCheckMemory check;
 
@@ -372,7 +412,7 @@ TEST(etc, swap) {
 	EXPECT_TRUE(buf.size()==3);
 
 	EXPECT_TRUE(buf1[0] == 'z');
-	EXPECT_TRUE(buf1.size()==3);
+	EXPECT_TRUE(buf1.size()==1);
 }
 
 TEST(etc, erase) {
@@ -398,6 +438,31 @@ TEST(etc, erase) {
 	EXPECT_TRUE(buf.capacity()==5);
 }
 
+TEST(etc, erase2) {
+	CrtCheckMemory check;
+
+	CircularBuffer buf(5);
+	buf.push_back('a');
+	buf.push_back('b');
+	buf.push_back('c');
+	buf.push_back('d');
+	buf.push_back('e');
+	buf.push_back('f');
+	buf.push_back('j');
+	EXPECT_TRUE(buf[0] == 'c');
+	EXPECT_TRUE(buf[1] == 'd');
+	EXPECT_TRUE(buf[2] == 'e');
+	EXPECT_TRUE(buf[3] == 'f');
+	EXPECT_TRUE(buf[4] == 'j');
+	buf.erase(1, 4);
+
+	EXPECT_TRUE(buf[0] == 'c');
+	EXPECT_TRUE(buf[1] == 'j');
+	EXPECT_ANY_THROW(buf.at(2));
+	EXPECT_TRUE(buf.size() == 2);
+	EXPECT_TRUE(buf.capacity() == 5);
+}
+
 TEST(etc, rotate) {
 	CrtCheckMemory check;
 
@@ -418,7 +483,25 @@ TEST(etc, rotate) {
 	EXPECT_TRUE(buf[2] == 'b');
 	EXPECT_TRUE(buf[3] == 'c');
 	EXPECT_TRUE(buf[4] == 'd');
+}
 
+TEST(etc, rotate2) {
+	CrtCheckMemory check;
+
+	CircularBuffer buf(5);
+	buf.push_back('a');
+	buf.push_back('b');
+	buf.push_back('c');
+	buf.push_back('d');
+	EXPECT_TRUE(buf[0] == 'a');
+	EXPECT_TRUE(buf[1] == 'b');
+	EXPECT_TRUE(buf[2] == 'c');
+	EXPECT_TRUE(buf[3] == 'd');
+	buf.rotate(1);
+	EXPECT_TRUE(buf[0] == 'b');
+	EXPECT_TRUE(buf[1] == 'c');
+	EXPECT_TRUE(buf[2] == 'd');
+	EXPECT_TRUE(buf[3] == 'a');
 }
 
 TEST(etc, operEqual) {
