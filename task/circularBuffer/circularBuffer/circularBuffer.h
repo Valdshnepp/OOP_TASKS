@@ -72,7 +72,7 @@ public:
 
     void resize(int new_size, const value_type &item = value_type());
 
-    void swap(CircularBuffer &cb);
+    void swap(CircularBuffer &cb) noexcept;
 
     void push_back(const value_type& item = value_type());
 
@@ -106,9 +106,6 @@ inline bool operator==(const CircularBuffer& a, const CircularBuffer& b)
     return false;
 }
 
-inline bool operator!=(const CircularBuffer& a, const CircularBuffer& b)
-{
-    // Как-то ортодоксально написано... Давай попроще
+inline bool operator!=(const CircularBuffer& a, const CircularBuffer& b){
     return !(a == b);
-    //return !operator==(a, b);
 }

@@ -526,6 +526,35 @@ TEST(etc, operEqual) {
 	EXPECT_TRUE(buf1 != buf2);
 }
 
+TEST(etc, constMethods) {
+	CrtCheckMemory check;
+
+	CircularBuffer buf1(5);
+	buf1.push_back('a');
+	buf1.push_back('b');
+	buf1.push_back('c');
+	buf1.push_back('d');
+	buf1.push_back('e');
+
+	const CircularBuffer buf2(buf1);
+
+	buf1.push_back('z');
+	EXPECT_TRUE(buf1.at(0)=='b');
+
+	EXPECT_TRUE(buf2.at(0)=='a');
+	EXPECT_FALSE(buf2.at(0)==buf1.at(0));
+	EXPECT_ANY_THROW(buf2.at(-1));
+	EXPECT_ANY_THROW(buf2.at(buf2.capacity()));
+
+	EXPECT_TRUE(buf2[0]=='a');
+	EXPECT_FALSE(buf2[0]== buf1[0]);
+
+	EXPECT_TRUE(buf2.front()== 'a');
+	EXPECT_TRUE(buf2.back()== 'e');
+
+	EXPECT_TRUE(buf1 != buf2);
+}
+
 TEST(combinationsTest, combo1) {
 	CrtCheckMemory check;
 
